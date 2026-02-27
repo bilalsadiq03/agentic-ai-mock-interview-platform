@@ -23,6 +23,7 @@ def parse_resume_and_jd(resume_text: str, job_description: str):
     Return strictly valid JSON:
 
     {{
+        "name": "",
         "candidate_skills": [],
         "experience_level": "Junior/Mid/Senior",
         "projects": [],
