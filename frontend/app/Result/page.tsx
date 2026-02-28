@@ -9,7 +9,7 @@ interface ParsedData {
   name:             string
   candidate_skills: string[]
   experience_level: "Junior" | "Mid" | "Senior"
-  projects:         string[]
+  projects:         any[] // ⭐ FIX: Changed from string[] to any[] to allow objects
   target_role:      string
   required_skills:  string[]
   skill_gap:        string[]
@@ -157,7 +157,8 @@ export default function ResultPage() {
         *{box-sizing:border-box;margin:0;padding:0}
         body{background:#f5f6ff}
         @keyframes spin{to{transform:rotate(360deg)}}
-        .back-btn:hover{border-color:#3b5bdb!important;color:#3b5bdb!important}
+        .nav-btn:hover{border-color:#3b5bdb!important;color:#3b5bdb!important;background:#f8f9ff!important}
+        .planner-btn:hover{background:#0ca678!important;transform:translateY(-1px);box-shadow:0 8px 25px rgba(12,166,120,.25)!important}
         .start-btn:hover{background:#4c6ef5!important;transform:translateY(-1px);box-shadow:0 10px 30px rgba(59,91,219,.4)!important}
         .proj-card:hover{border-color:#748ffc!important;box-shadow:0 6px 22px rgba(59,91,219,.1)!important;transform:translateY(-2px)}
       `}</style>
@@ -175,9 +176,15 @@ export default function ResultPage() {
             <span style={{ fontFamily: FH, fontWeight: 800, fontSize: "1rem", color: "#0f1133", letterSpacing: "-0.02em" }}>InterviewIQ</span>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Link href="/" className="back-btn" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 18px", background: "#fff", border: "1.5px solid #d1d5f0", borderRadius: 10, fontSize: "0.84rem", fontWeight: 600, color: "#3d4270", textDecoration: "none", transition: "all .18s" }}>
+            <Link href="/" className="nav-btn" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 18px", background: "#fff", border: "1.5px solid #d1d5f0", borderRadius: 10, fontSize: "0.84rem", fontWeight: 600, color: "#3d4270", textDecoration: "none", transition: "all .18s" }}>
               ← Back
             </Link>
+            
+            {/* Planner Button */}
+            <Link href="/planner" className="planner-btn" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 20px", background: "#12b886", border: "none", borderRadius: 10, fontSize: "0.84rem", fontWeight: 700, color: "#fff", textDecoration: "none", boxShadow: "0 4px 14px rgba(18,184,134,.2)", transition: "all .2s" }}>
+              <span style={{ fontSize: "1rem" }}>🗓️</span> Career Planner
+            </Link>
+
             <Link href="/start" className="start-btn" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 20px", background: "#3b5bdb", border: "none", borderRadius: 10, fontSize: "0.84rem", fontWeight: 700, color: "#fff", textDecoration: "none", boxShadow: "0 4px 14px rgba(59,91,219,.28)", transition: "all .2s" }}>
               Start Interview →
             </Link>
@@ -291,21 +298,39 @@ export default function ResultPage() {
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.31 }}>
             <Card>
               <SectionTitle emoji="🚀" title="Projects" />
-              {data.projects.length > 0 ? (
+              {data.projects && data.projects.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {data.projects.map((proj, i) => (
-                    <div key={i} className="proj-card" style={{ padding: "13px 16px", borderRadius: 12, background: "#fafbff", border: "1.5px solid #e8eaf6", transition: "all .2s", cursor: "default" }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,rgba(59,91,219,.1),rgba(76,110,245,.15))", border: "1.5px solid rgba(59,91,219,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", flexShrink: 0 }}>
-                          {["🔷", "🟡", "🟢", "🔴", "🟣"][i % 5]}
-                        </div>
-                        <div>
-                          <p style={{ fontSize: "0.855rem", fontWeight: 600, color: "#0f1133", lineHeight: 1.5 }}>{proj}</p>
-                          <p style={{ fontSize: "0.72rem", color: "#8b90b8", marginTop: 2, fontFamily: FM }}>Project {i + 1}</p>
+                  
+                  {/* ⭐ FIX: Safely handling project objects and arrays below */}
+                  {data.projects.map((proj: any, i) => {
+                    const projName = typeof proj === 'object' && proj !== null ? (proj.name || "Untitled Project") : proj;
+                    const projTech = typeof proj === 'object' && proj !== null && Array.isArray(proj.technologies) ? proj.technologies.join(", ") : null;
+
+                    return (
+                      <div key={i} className="proj-card" style={{ padding: "13px 16px", borderRadius: 12, background: "#fafbff", border: "1.5px solid #e8eaf6", transition: "all .2s", cursor: "default" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                          <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,rgba(59,91,219,.1),rgba(76,110,245,.15))", border: "1.5px solid rgba(59,91,219,.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", flexShrink: 0 }}>
+                            {["🔷", "🟡", "🟢", "🔴", "🟣"][i % 5]}
+                          </div>
+                          <div>
+                            <p style={{ fontSize: "0.855rem", fontWeight: 600, color: "#0f1133", lineHeight: 1.5 }}>
+                              {projName}
+                            </p>
+                            
+                            {/* Render technologies if the AI provided them */}
+                            {projTech && (
+                              <p style={{ fontSize: "0.75rem", color: "#3b5bdb", marginTop: 4, fontWeight: 500 }}>
+                                {projTech}
+                              </p>
+                            )}
+
+                            <p style={{ fontSize: "0.72rem", color: "#8b90b8", marginTop: 4, fontFamily: FM }}>Project {i + 1}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
+
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "28px 0", gap: 8 }}>
@@ -329,10 +354,18 @@ export default function ResultPage() {
               {data.skill_gap.length > 0 && <> Focus areas: <strong style={{ color: "rgba(255,255,255,0.9)" }}>{data.skill_gap.slice(0, 3).join(", ")}</strong>.</>}
             </p>
           </div>
-          <Link href="/start" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 26px", background: "#fff", color: "#3b5bdb", borderRadius: 12, fontSize: "0.92rem", fontWeight: 800, textDecoration: "none", boxShadow: "0 4px 18px rgba(0,0,0,.14)", letterSpacing: "-0.01em", flexShrink: 0 }}>
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="rgba(59,91,219,0.3)" strokeWidth="1.5"/><path d="M6.5 5.5l4 2.5-4 2.5V5.5z" fill="#3b5bdb"/></svg>
-            Start Mock Interview
-          </Link>
+
+          <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
+            {/* CTA Version of Planner Button */}
+            <Link href="/planner" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: 12, fontSize: "0.92rem", fontWeight: 700, textDecoration: "none", backdropFilter: "blur(10px)", transition: "all .2s" }}>
+              Learning Roadmap
+            </Link>
+
+            <Link href="/start" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 26px", background: "#fff", color: "#3b5bdb", borderRadius: 12, fontSize: "0.92rem", fontWeight: 800, textDecoration: "none", boxShadow: "0 4px 18px rgba(0,0,0,.14)", letterSpacing: "-0.01em", flexShrink: 0 }}>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="rgba(59,91,219,0.3)" strokeWidth="1.5"/><path d="M6.5 5.5l4 2.5-4 2.5V5.5z" fill="#3b5bdb"/></svg>
+              Start Mock Interview
+            </Link>
+          </div>
         </motion.div>
 
       </main>
