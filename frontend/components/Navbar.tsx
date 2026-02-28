@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 
-const NAV_LINKS = ["Features", "How it Works", "Pricing"]
+const NAV_LINKS = ["Features", "How it Works"]
 
 export default function Navbar() {
   return (
@@ -10,8 +10,8 @@ export default function Navbar() {
         @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap');
         .nav-link {
           color: #8b90b8;
-          font-size: 0.875rem;
-          font-weight: 500;
+          font-size: 0.950rem;
+          font-weight: 600;
           text-decoration: none;
           font-family: 'Figtree', sans-serif;
           transition: color 0.15s;
@@ -73,7 +73,7 @@ export default function Navbar() {
               borderRadius: 10,
               background: "linear-gradient(135deg, #3b5bdb, #4c6ef5)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontSize: "1rem",
+              color: "#fff", fontSize: "2rem",
               boxShadow: "0 4px 14px rgba(59,91,219,0.35)",
               flexShrink: 0,
             }}
