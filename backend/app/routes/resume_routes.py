@@ -1,19 +1,21 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from app.utils.pdf_utils import extract_text_from_pdf
 from app.agents.resume_parser import parse_resume_and_jd
 from app.agents.planner_agent import create_interview_plan
 from app.agents.question_agent import generate_interview_questions
 from app.agents.evaluator_agent import evaluate_interview_performance
 from app.config import db
+from app.dependencies.auth import get_current_user
 from datetime import datetime
 from bson import ObjectId
 
-router = APIRouter(prefix="/resume", tags=["Resume"])
+router = APIRouter(prefix="/resume", tags=["Resume"], dependencies=[Depends(get_current_user)])
 
 @router.post("/upload")
 async def upload_resume(
     file: UploadFile = File(...),
-    job_description: str = Form(...)
+    job_description: str = Form(...),
+    user: dict = Depends(get_current_user)
 ):
     try:
         # Validate file type
@@ -31,6 +33,7 @@ async def upload_resume(
 
         # Save interview record
         interview = {
+            "owner_id": user["_id"],
             "resume_data": parsed_data,
             "job_description": job_description,
             "interview_plan": {},
@@ -52,8 +55,8 @@ async def upload_resume(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{interview_id}/plan")  # Changed from /planner/{id} to /{id}/plan
-def generate_plan(interview_id: str):
+@router.post("/{interview_id}/plan")
+def generate_plan(interview_id: str, user: dict = Depends(get_current_user)):
     try:
         # Convert string ID to MongoDB ObjectId
         oid = ObjectId(interview_id)
@@ -61,6 +64,8 @@ def generate_plan(interview_id: str):
 
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
+        if interview.get("owner_id") != user["_id"]:
+            raise HTTPException(status_code=403, detail="Forbidden")
 
         resume_data = interview["resume_data"]
         job_description = interview["job_description"]
@@ -90,13 +95,15 @@ def generate_plan(interview_id: str):
         raise HTTPException(status_code=500, detail=f"Planner Error: {str(e)}")
 
 @router.post("/{interview_id}/questions")
-def create_questions(interview_id: str):
+def create_questions(interview_id: str, user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(interview_id)
         interview = db.interviews.find_one({"_id": oid})
 
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
+        if interview.get("owner_id") != user["_id"]:
+            raise HTTPException(status_code=403, detail="Forbidden")
 
         resume_data = interview.get("resume_data", {})
         job_description = interview.get("job_description", "")
@@ -129,13 +136,15 @@ def create_questions(interview_id: str):
         raise HTTPException(status_code=500, detail=f"QA Agent Error: {str(e)}")
 
 @router.post("/{interview_id}/evaluate")
-def submit_interview(interview_id: str, payload: dict):
+def submit_interview(interview_id: str, payload: dict, user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(interview_id)
         interview = db.interviews.find_one({"_id": oid})
 
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
+        if interview.get("owner_id") != user["_id"]:
+            raise HTTPException(status_code=403, detail="Forbidden")
 
         user_answers = payload.get("answers", {})
         questions = interview.get("questions", [])
@@ -161,14 +170,31 @@ def submit_interview(interview_id: str, payload: dict):
     
 #Get Interview Data (Any Step)
 @router.get("/{interview_id}")
-def get_interview(interview_id: str):
+def get_interview(interview_id: str, user: dict = Depends(get_current_user)):
     try:
         interview = db.interviews.find_one({"_id": ObjectId(interview_id)})
 
         if not interview:
             raise HTTPException(status_code=404, detail="Interview not found")
+        if interview.get("owner_id") != user["_id"]:
+            raise HTTPException(status_code=403, detail="Forbidden")
 
         interview["_id"] = str(interview["_id"])
         return interview
     except:
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+# List interviews for current user
+@router.get("/mine/list")
+def list_my_interviews(user: dict = Depends(get_current_user)):
+    cursor = db.interviews.find({"owner_id": user["_id"]}).sort("created_at", -1)
+    items = []
+    for doc in cursor:
+        created_at = doc.get("created_at")
+        items.append({
+            "id": str(doc["_id"]),
+            "status": doc.get("status"),
+            "created_at": created_at.isoformat() if created_at else None,
+            "target_role": (doc.get("resume_data") or {}).get("target_role"),
+        })
+    return {"items": items}

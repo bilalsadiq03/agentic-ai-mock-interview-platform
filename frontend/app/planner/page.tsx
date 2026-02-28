@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
 
 interface InterviewPlan {
   difficulty: string
@@ -14,11 +17,17 @@ export default function PlannerPage() {
   const [plan, setPlan] = useState<InterviewPlan | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchPlan = async () => {
+      const token = localStorage.getItem("access_token")
+      if (!token) {
+        router.push("/login")
+        return
+      }
       const interviewId = localStorage.getItem("interview_id")
-      
+
       if (!interviewId) {
         setError("No Interview ID found. Please go back and upload your resume.")
         setLoading(false)
@@ -26,11 +35,12 @@ export default function PlannerPage() {
       }
 
       try {
-        const res = await fetch(`http://127.0.0.1:8000/resume/${interviewId}/plan`, {
-          method: "POST"
+        const res = await fetch(`${API_BASE}/resume/${interviewId}/plan`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
         })
         const data = await res.json()
-        
+
         if (res.ok && data.success) {
           setPlan(data.interview_plan)
         } else {
@@ -44,77 +54,68 @@ export default function PlannerPage() {
     }
 
     fetchPlan()
-  }, [])
+  }, [router])
 
-  /* ── Loading State ── */
   if (loading) {
-    return <div style={{ minHeight: "100vh", background: "#e5e7eb", padding: "100px", textAlign: "center", color: "#333", fontFamily: "sans-serif" }}>Generating your custom roadmap...</div>
-  }
-
-  /* ── Error State ── */
-  if (error || !plan) {
     return (
-      <div style={{ minHeight: "100vh", background: "#e5e7eb", padding: "100px", textAlign: "center", fontFamily: "sans-serif", color: "#ef4444" }}>
-        <h2 style={{ color: "#000000" }}>⚠️ Error</h2>
-        <p style={{ color: "#333", marginTop: "10px", marginBottom: "20px" }}>{error}</p>
-        <Link href="/" style={{ color: "#2563eb", textDecoration: "none", fontWeight: "bold" }}>&larr; Start Over</Link>
+      <div className="min-h-screen bg-slate-50 px-6 pt-28 text-center text-slate-600">
+        Generating your custom roadmap...
       </div>
     )
   }
 
-  /* ── Success State (gray-200 Background) ── */
-  return (
-    <div style={{ minHeight: "100vh", background: "#e5e7eb", fontFamily: "sans-serif", color: "#000000" }}>
-      <main style={{ maxWidth: "650px", margin: "0 auto", padding: "60px 20px" }}>
-        
-        <Link href="/Result" style={{ color: "#64748b", textDecoration: "none", fontWeight: "600", fontSize: "14px", display: "inline-block", marginBottom: "24px" }}>
-          &larr; Back to Analysis
-        </Link>
-        
-        <h1 style={{ margin: "0 0 32px 0", fontSize: "2.2rem", color: "#000000", letterSpacing: "-0.5px" }}>
-          Interview Roadmap
-        </h1>
+  if (error || !plan) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-6 pt-28 text-center text-rose-600">
+        <h2 className="text-xl font-bold text-slate-900">Error</h2>
+        <p className="mt-2 text-slate-600">{error}</p>
+        <Link href="/" className="mt-5 inline-block text-sm font-semibold text-blue-600">? Start Over</Link>
+      </div>
+    )
+  }
 
-        {/* Difficulty Section */}
-        <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "16px", padding: "24px", marginBottom: "20px" }}>
-          <p style={{ margin: 0, fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "700" }}>Level</p>
-          <h2 style={{ margin: "8px 0", color: "#000000", fontSize: "1.8rem" }}>{plan.difficulty}</h2>
-          <p style={{ margin: 0, fontSize: "14px", color: "#334155" }}>{plan.num_questions} Questions Targeted</p>
+  return (
+    <div className="min-h-screen bg-slate-50 pb-16">
+      <main className="mx-auto max-w-2xl px-6 pt-24">
+        <Link href="/result" className="text-sm font-semibold text-slate-500">? Back to Analysis</Link>
+
+        <h1 className="font-display mt-4 text-3xl font-extrabold text-slate-900">Interview Roadmap</h1>
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_10px_28px_rgba(0,0,0,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Level</p>
+          <h2 className="mt-2 text-2xl font-bold text-slate-900">{plan.difficulty}</h2>
+          <p className="mt-1 text-sm text-slate-600">{plan.num_questions} Questions Targeted</p>
         </div>
 
-        {/* Topics Section */}
-        <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "16px", padding: "24px", marginBottom: "20px" }}>
-          <h3 style={{ margin: "0 0 16px 0", color: "#000000", fontSize: "1.1rem" }}>Key Topics</h3>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_10px_28px_rgba(0,0,0,0.06)]">
+          <h3 className="text-lg font-bold text-slate-900">Key Topics</h3>
+          <div className="mt-4 flex flex-wrap gap-2">
             {plan.key_topics.map((topic, i) => (
-              <span key={i} style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", padding: "8px 16px", borderRadius: "8px", fontSize: "14px", fontWeight: "600" }}>
+              <span key={i} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
                 {topic}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Focus Areas Section */}
-        <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "16px", padding: "24px", marginBottom: "32px" }}>
-          <h3 style={{ margin: "0 0 16px 0", color: "#000000", fontSize: "1.1rem" }}>Focus Areas</h3>
-          <ul style={{ padding: 0, margin: 0, listStyle: "none" }}>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_10px_28px_rgba(0,0,0,0.06)]">
+          <h3 className="text-lg font-bold text-slate-900">Focus Areas</h3>
+          <ul className="mt-4 space-y-2">
             {plan.focus_areas.map((area, i) => (
-              <li key={i} style={{ display: "flex", gap: "12px", marginBottom: "12px", color: "#000000", fontSize: "15px", lineHeight: "1.5" }}>
-                <span style={{ color: "#2563eb" }}>✦</span> {area}
+              <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
+                <span className="text-blue-600">?</span>
+                {area}
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Start Button */}
-        <Link href="/interview" style={{ 
-          display: "block", textAlign: "center", background: "#2563eb", color: "#ffffff", 
-          padding: "16px", borderRadius: "12px", fontSize: "16px", fontWeight: "bold", textDecoration: "none",
-          boxShadow: "0 4px 14px rgba(37, 99, 235, 0.2)"
-        }}>
+        <Link
+          href="/interview"
+          className="mt-6 block rounded-xl bg-blue-600 px-4 py-4 text-center text-sm font-bold text-white shadow-[0_6px_18px_rgba(59,91,219,0.28)] transition hover:-translate-y-0.5 hover:bg-blue-500"
+        >
           Start Mock Interview
         </Link>
-
       </main>
     </div>
   )
