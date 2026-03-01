@@ -1,7 +1,3 @@
-This document provides a professional README and an architectural overview for the "AI Mock Interview" project.
-
----
-
 # AI Mock Interview Platform
 
 ## Table of Contents
