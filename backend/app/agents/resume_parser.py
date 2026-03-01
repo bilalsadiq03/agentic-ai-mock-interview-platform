@@ -1,4 +1,4 @@
-from app.services.gemini_service import generate_response
+from app.services.openrouter_service import generate_response
 import json
 import re
 

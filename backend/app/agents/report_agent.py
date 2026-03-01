@@ -1,4 +1,4 @@
-from app.services.gemini_service import generate_response
+from backend.app.services.openrouter_service import generate_response
 
 
 def generate_final_report(

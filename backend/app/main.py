@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from app.services.gemini_service import generate_response
+from app.services.openrouter_service import generate_response
 from app.routes import resume_routes
 from app.routes import auth_routes
 from app.config import FRONTEND_ORIGINS_LIST
@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# ✅ CORS (required for Next.js)
+# CORS (required for Next.js)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=FRONTEND_ORIGINS_LIST,
