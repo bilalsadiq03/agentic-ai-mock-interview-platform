@@ -1,5 +1,5 @@
 import json
-from app.services.gemini_service import generate_response
+from app.services.openrouter_service import generate_response
 
 def create_interview_plan(resume_data, job_description):
 

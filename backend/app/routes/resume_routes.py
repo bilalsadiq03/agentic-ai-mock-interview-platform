@@ -1,4 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from pydantic import BaseModel
+from typing import List, Dict, Any
 from app.utils.pdf_utils import extract_text_from_pdf
 from app.agents.resume_parser import parse_resume_and_jd
 from app.agents.planner_agent import create_interview_plan
@@ -10,6 +12,14 @@ from datetime import datetime
 from bson import ObjectId
 
 router = APIRouter(prefix="/resume", tags=["Resume"], dependencies=[Depends(get_current_user)])
+
+# ==========================================
+# 1. NEW: Define the Pydantic model for the Evaluate Payload
+# This tells FastAPI exactly what JSON to expect from React
+# ==========================================
+class SubmitInterviewPayload(BaseModel):
+    questions: List[Dict[str, Any]]
+
 
 @router.post("/upload")
 async def upload_resume(
@@ -55,6 +65,7 @@ async def upload_resume(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/{interview_id}/plan")
 def generate_plan(interview_id: str, user: dict = Depends(get_current_user)):
     try:
@@ -93,6 +104,7 @@ def generate_plan(interview_id: str, user: dict = Depends(get_current_user)):
     except Exception as e:
         # Handle invalid ObjectId format or Agent failures
         raise HTTPException(status_code=500, detail=f"Planner Error: {str(e)}")
+
 
 @router.post("/{interview_id}/questions")
 def create_questions(interview_id: str, user: dict = Depends(get_current_user)):
@@ -135,8 +147,17 @@ def create_questions(interview_id: str, user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"QA Agent Error: {str(e)}")
 
+
+# ==========================================
+# 2. FIXED: The Evaluate Endpoint
+# Uses the Pydantic model and directly passes the merged questions
+# ==========================================
 @router.post("/{interview_id}/evaluate")
-def submit_interview(interview_id: str, payload: dict, user: dict = Depends(get_current_user)):
+def submit_interview(
+    interview_id: str, 
+    payload: SubmitInterviewPayload, 
+    user: dict = Depends(get_current_user)
+):
     try:
         oid = ObjectId(interview_id)
         interview = db.interviews.find_one({"_id": oid})
@@ -146,11 +167,13 @@ def submit_interview(interview_id: str, payload: dict, user: dict = Depends(get_
         if interview.get("owner_id") != user["_id"]:
             raise HTTPException(status_code=403, detail="Forbidden")
 
-        user_answers = payload.get("answers", {})
-        questions = interview.get("questions", [])
+        # Debugging print to ensure we received the data
+        print(f"--- GRADING INTERVIEW: {interview_id} ---")
+        print(f"Total Questions Received: {len(payload.questions)}")
 
         # 🧠 Evaluator Agent
-        report = evaluate_interview_performance(questions, user_answers)
+        # We now pass the merged array (which contains the candidate's answers inside it)
+        report = evaluate_interview_performance(payload.questions)
 
         # Update DB with the final results
         db.interviews.update_one(
@@ -163,12 +186,15 @@ def submit_interview(interview_id: str, payload: dict, user: dict = Depends(get_
             }
         )
 
-        return {"success": True, "report": report}
+        # CRITICAL FIX: Return 'report' directly so React can parse it without crashing
+        return report
 
     except Exception as e:
+        print(f"Evaluation Route Error: {e}")
         raise HTTPException(status_code=500, detail=f"Evaluation Error: {str(e)}")
     
-#Get Interview Data (Any Step)
+
+# Get Interview Data (Any Step)
 @router.get("/{interview_id}")
 def get_interview(interview_id: str, user: dict = Depends(get_current_user)):
     try:
@@ -183,6 +209,7 @@ def get_interview(interview_id: str, user: dict = Depends(get_current_user)):
         return interview
     except:
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
 
 # List interviews for current user
 @router.get("/mine/list")
